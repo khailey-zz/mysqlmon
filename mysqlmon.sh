@@ -2,10 +2,9 @@
 
 
 
-HOST=kylelfms57bb.cs63gefrggyf.us-east-1.rds.amazonaws.com 
-HOST=kylelfms56bb.cs63gefrggyf.us-east-1.rds.amazonaws.com 
+HOST= 
 UN=kylelf  
-PW=Vigil20! 
+PW= 
 SID=mysql
 PORT=3306 
 

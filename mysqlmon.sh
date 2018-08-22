@@ -1,10 +1,12 @@
 
 
+all_global_status=0
 
 
-HOST= 
+HOST=kylelfms57bb.cs63gefrggyf.us-east-1.rds.amazonaws.com 
+HOST=kylelfms56bb.cs63gefrggyf.us-east-1.rds.amazonaws.com 
 UN=kylelf  
-PW= 
+PW=Vigil20! 
 SID=mysql
 PORT=3306 
 
@@ -23,7 +25,7 @@ function usage
        exit
 }
 
-echo "$# =" $#
+#echo "$# =" $#
 
 [[ $# -lt 3 ]] && usage
 
@@ -63,7 +65,6 @@ function pipesetup {
     OUTPUT=${LOG}/${TARGET}_connect.log
     CLEANUP=${CLEAN}/${TARGET}_cleanup.sh
     SQLTESTOUT=${TMP}/${TARGET}_collect.out
-    echo "touch $SQLTESTOUT"
     touch $SQLTESTOUT
     OPEN=${TMP}/${TARGET}_collect.open
     PIPE=${TMP}/${TARGET}_collect.pipe
@@ -318,13 +319,24 @@ function wts
      # tee $SQLTESTOUT;
      # SHOW GLOBAL STATUS where variable_name like 'innodb_rows_%' or  variable_name = 'innodb_log_writes' or  variable_name = 'Handler_commit' ;
      # SHOW GLOBAL STATUS ;
+
      cp  ${TMP}/vdbmon_${TARGET}_wts.tmp   ${TMP}/vdbmon_${TARGET}_wts_old.tmp 
-     echo "" > ${TMP}/vdbmon_${TARGET}_wts.tmp
-     cat << EOF
-     tee ${TMP}/vdbmon_${TARGET}_wts.tmp
-     SHOW GLOBAL STATUS where variable_name like 'innodb_rows_%' or  variable_name = 'Innodb_os_log_written'  ;
-     notee;
+     
+     if [[ all_global_status -eq 1 ]]; then
+        echo "" > ${TMP}/vdbmon_${TARGET}_wts.tmp
+        cat << EOF
+        tee ${TMP}/vdbmon_${TARGET}_wts.tmp
+        SHOW GLOBAL STATUS;
+        notee;
 EOF
+     else
+        echo "" > ${TMP}/vdbmon_${TARGET}_wts.tmp
+        cat << EOF
+        tee ${TMP}/vdbmon_${TARGET}_wts.tmp
+        SHOW GLOBAL STATUS where variable_name like 'innodb_rows_%' or  variable_name = 'Innodb_os_log_written'  ;
+        notee;
+EOF
+     fi
      #ls -l  ${TMP}/vdbmon_${TARGET}_wts.tmp   ${TMP}/vdbmon_${TARGET}_wts_old.tmp 
      #cat  ${TMP}/vdbmon_${TARGET}_wts.tmp   ${TMP}/vdbmon_${TARGET}_wts_old.tmp |  \
      #    grep Inno |  \
@@ -366,8 +378,6 @@ EOF
 #  REM create sequence orastat;
 #  END FUNCTION DEFINITIONS  
 #  BEGIN MAIN LOOP          
-  echo "SQLTESTOUT $SQLTESTOUT"
-  ls -l $SQLTESTOUT
   CONNECTED=0
   testconnect
   logoutput "Connected, starting collect at $(date)" 
@@ -420,14 +430,16 @@ EOF
             for i in $COLLECT_LIST; do
                ${i} >>$PIPE
             done
-           echo  ${TMP}/vdbmon_${TARGET}_wts.tmp   
-           cat  ${TMP}/vdbmon_${TARGET}_wts.tmp   |  \
+           # echo  ${TMP}/vdbmon_${TARGET}_wts.tmp   
+           if [[ all_global_status -ne 1 ]] ; then          
+              cat  ${TMP}/vdbmon_${TARGET}_wts.tmp   |  \
                                sed -e 's/  */ /g' | \
                                sed -e 's/Innodb_rows_//g' | \
                                sed -e 's/Innodb_//g' | \
                                grep -v Variable_name  | \
                                grep -v '^ *$'  | \
-            awk  '{ val[$1]=$1 } END { for (i in val)  printf(" %10s", i ); print "" } '
+                                awk  '{ val[$1]=$1 } END { for (i in val)  printf(" %10s", i ); print "" } '
+            fi 
             #awk  'BEGIN{i=1}{ val[i]=$1 ; i++ } END { for (j=1;j<i;j++)  printf(" %-10.10s", val[j] ); print "" } '
         fi
    
@@ -445,12 +457,16 @@ EOF
               #cat ${TMP}/vdbmon_${TARGET}_${i}.tmp  | grep -v '^$' | sed -e 's/XXX.*//' 
               #cat ${TMP}/vdbmon_${TARGET}_${i}.tmp  | sed -e "s/^/$last_sec,/" >>${MON_HOME}/${CURR_DATE}/${TARGET}:${i}$SUF
               # ls -l  ${TMP}/vdbmon_${TARGET}_wts.tmp   ${TMP}/vdbmon_${TARGET}_wts_old.tmp 
-              
-              cat  ${TMP}/vdbmon_${TARGET}_wts.tmp   ${TMP}/vdbmon_${TARGET}_wts_old.tmp |  \
-                  grep Inno |  \
-                  awk  '{ val[$1]=$2-val[$1] } END { for (i in val)  printf(" %10i", val[i]*-1 ); print "" } '
-                  # awk '{ val[$1]=$2-val[$1] } END { for (i in val)  printf("%-40s, %10i\n", i, val[i]*-1 ) } '
-                  # echo " ------------------------- "
+              if [[ all_global_status -eq 1 ]] ; then          
+                cat  ${TMP}/vdbmon_${TARGET}_wts.tmp   ${TMP}/vdbmon_${TARGET}_wts_old.tmp |  \
+                    grep Inno |  \
+                    awk '{ val[$1]=$2-val[$1] } END { for (i in val)  printf("%-40s, %10i\n", i, val[i]*-1 ) } '
+                    echo " ------------------------- "
+              else
+                cat  ${TMP}/vdbmon_${TARGET}_wts.tmp   ${TMP}/vdbmon_${TARGET}_wts_old.tmp |  \
+                    grep Inno |  \
+                    awk  '{ val[$1]=$2-val[$1] } END { for (i in val)  printf(" %10i", val[i]*-1 ); print "" } '
+              fi
             done
        fi
        midnight=0;

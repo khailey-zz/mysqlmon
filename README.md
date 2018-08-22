@@ -7,6 +7,15 @@ which depend on the flag in the script  all_global_status
 
         all_global_status=0
   
+output looks like
+
+         ------------------------- 
+        Innodb_buffer_pool_read_requests        ,          0
+        Innodb_buffer_pool_load_status          ,          0
+        Innodb_log_write_requests               ,          0
+        Innodb_data_writes                      ,          0
+        ...
+        
 all global stats
 
         all_global_status=1
